@@ -40,8 +40,10 @@ class TransposeConvBlock(nn.Module):
         return self.conv(x)
 
 class ASPP(nn.Module):
-    def __init__(self, in_c, out_c):
+    def __init__(self, in_c, out_c, residual=False):
         super().__init__()
+
+        self.residual = residual
 
         self.conv1 = ConvolutionBlock(in_c, out_c, kernel_size=1)
         self.conv2 = ConvolutionBlock(in_c, out_c, kernel_size=3, dilation=6)  # 3
@@ -63,10 +65,13 @@ class ASPP(nn.Module):
         x4 = self.conv4(x)
         x5 = self.conv5(x)
 
-        x = torch.cat([x1, x2, x3, x4, x5], dim=1)
-        x = self.conv6(x)
+        x6 = torch.cat([x1, x2, x3, x4, x5], dim=1)
+        x6 = self.conv6(x6)
 
-        return x
+        if self.residual:
+            return x + x6
+        
+        return x6
 
 # https://arxiv.org/pdf/1804.03999.pdf
 class AdditiveAttentionGate(nn.Module):
@@ -116,13 +121,15 @@ class Unet(nn.Module):
 
         self.conv1 = nn.Sequential(
             ConvolutionBlock(in_c, 16, kernel_size=3),
-            ASPP(16, 16),
-            ASPP(16, 16),
+            ASPP(16, 16, residual=True),
+            ASPP(16, 16, residual=True),
+            ASPP(16, 16, residual=True),
         )
         self.conv2 = nn.Sequential(
             ConvolutionBlock(16, 32, kernel_size=3),
-            ASPP(32, 32),
-            ASPP(32, 32),
+            ASPP(32, 32, residual=True),
+            ASPP(32, 32, residual=True),
+            ASPP(32, 32, residual=True),
         )
         self.conv3 = nn.Sequential(
             ConvolutionBlock(32, 64, kernel_size=3),
@@ -132,17 +139,22 @@ class Unet(nn.Module):
         self.tconv1 = TransposeConvBlock(64, 32, kernel_size=2)
 
         self.conv4 = nn.Sequential(
-            ConvolutionBlock(64, 64, kernel_size=3),
-            ASPP(64, 64),
-            ASPP(64, 32),
+            ConvolutionBlock(64, 32, kernel_size=3),
+            
+            ASPP(32, 32, residual=True),
+            ASPP(32, 32, residual=True),
+            ASPP(32, 32, residual=True),
         )
 
         self.tconv2 = TransposeConvBlock(32, 16, kernel_size=2)
 
         self.conv5 = nn.Sequential(
             ConvolutionBlock(32, 16, kernel_size=3),
-            ASPP(16, 16),
-            ASPP(16, out_c),
+
+            ASPP(16, 16, residual=True),
+            ASPP(16, 16, residual=True),
+            ASPP(16, 16, residual=True),
+            ConvolutionBlock(16, out_c, kernel_size=3),
         )
 
     def forward(self, x):
