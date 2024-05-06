@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import torch
 
-class RandomSimetry(object):
+class RandomSimetry():
     def __call__(self, sample):
         if torch.rand(1) > 0.5:
             sample = torch.rot90(sample, 1, [1,2])
@@ -17,7 +17,7 @@ class RandomSimetry(object):
 
         return sample
 
-class ChannelJitter(object):
+class ChannelJitter():
     def __init__(self, sum_fac, mul_fac):
         self.sum_fac = sum_fac
         self.mul_fac = mul_fac
@@ -25,10 +25,10 @@ class ChannelJitter(object):
     def __call__(self, sample):
         channels = sample.shape[0]
         
-        sum_rnd = torch.randn(channels) * self.sum_fac
+        sum_rnd = torch.randn(channels, device=sample.device) * self.sum_fac
         sum_rnd[-1] = 0  # last channel is the label
 
-        mul_rnd = torch.randn(channels) * self.mul_fac + 1
+        mul_rnd = torch.randn(channels, device=sample.device) * self.mul_fac + 1
         mul_rnd[-1] = 1
 
         # sample shape is (channels, height, width)
@@ -37,14 +37,14 @@ class ChannelJitter(object):
         return sample
 
 
-class RandomNoise(object):
+class RandomNoise():
     def __init__(self, std,):
         self.std = std
 
     def __call__(self, sample):
-        std = torch.rand(1) * self.std
+        std = torch.rand(1, device=sample.device) * self.std
 
-        noise = torch.randn(sample.shape) * std
+        noise = torch.randn(sample.shape, device=sample.device) * std
         noise[-1] = 0
 
         return sample + noise
