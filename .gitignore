@@ -1,5 +1,8 @@
 __pycache__
 *.pt
 
+.env
+/wandb/
+
 datasets/*
 !datasets/.gitkeep
