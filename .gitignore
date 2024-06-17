@@ -6,3 +6,5 @@ __pycache__
 
 datasets/*
 !datasets/.gitkeep
+
+*.pth
